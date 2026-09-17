@@ -16,6 +16,9 @@
 2. `AI-CONFIG.md`。hakusekid4/ai-config から自動同期される共通設定。上の import で自動読み込み。**手で編集しない**(同期で上書きされる)
 3. `README.md`。プロジェクト概要
 
+`AI-CONFIG-DETAILS.md` もある(手順の詳細・価値観・ユーザー像)。**こちらは自動では読み込まれない。**
+必要になったときに開く。毎回読み込む分を短く保つために分けてある(長いほど指示が守られにくくなるため)。
+
 矛盾したときの優先順位: 法令・利用規約 > `AI-CONFIG.md` の禁止事項 > `CLAUDE.md` > `AI-CONFIG.md` のその他 > `README.md`
 
 会話の要点や決定を中央に残したいときは `/ai-config-memo` を使う。`ai-config-inbox/` に保存され、ai-config が定期的に回収する。
@@ -31,6 +34,6 @@
 
 ### 読み込まれているか疑わしいとき
 
-`/context` の Memory files に `CLAUDE.md` と `AI-CONFIG.md` が並んでいるかを見る。
+`/context` の Memory files に `CLAUDE.md` と `AI-CONFIG.md` が並んでいるかを見る(`AI-CONFIG-DETAILS.md` は出なくて正常)。
 無ければ、作業ディレクトリがリポジトリ直下でない可能性が高い(CLAUDE.md は「起動したディレクトリとその上位」からしか自動で読まれない)。
 <!-- ai-config:end -->
