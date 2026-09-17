@@ -19,7 +19,17 @@ import re
 import subprocess
 import sys
 
-MARKERS = ("<<<<<<< ", ">>>>>>> ")
+# 本物の競合は 3 種のマーカーが**行頭に**そろって現れる。
+# 部分一致で見ると、マーカーを扱うコードや試験データを競合と誤認する
+# (2026-09-17、同じ作りの `sync_branch.py` が自分自身のソースで誤爆した)。
+_BEGIN = re.compile(r"^<<<<<<< ", re.M)
+_MID = re.compile(r"^=======\s*$", re.M)
+_END = re.compile(r"^>>>>>>> ", re.M)
+
+
+def has_conflict(text: str) -> bool:
+    """本物の競合マーカーが残っているか。"""
+    return bool(_BEGIN.search(text) and _MID.search(text) and _END.search(text))
 # `git commit` を含むか。`--amend` も対象。文字列の中の "git commit" には反応しないよう、
 # 行頭か区切り記号の直後にあるものだけを見る。
 COMMIT_RE = re.compile(r"(^|[;&|]\s*|\(\s*)git\s+(-c\s+\S+\s+)*commit\b")
@@ -55,7 +65,7 @@ def conflicted(cwd: str, path: str) -> bool:
                          capture_output=True, text=True, timeout=15, errors="replace")
     if out.returncode != 0:
         return False
-    return any(m in out.stdout for m in MARKERS)
+    return has_conflict(out.stdout)
 
 
 def check(cwd: str) -> list[str]:
