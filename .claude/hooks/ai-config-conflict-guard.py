@@ -68,10 +68,35 @@ def conflicted(cwd: str, path: str) -> bool:
     return has_conflict(out.stdout)
 
 
+def _blob(cwd: str, rev_path: str) -> str:
+    out = subprocess.run(["git", "rev-parse", "--verify", "-q", rev_path], cwd=cwd,
+                         capture_output=True, text=True, timeout=15)
+    return out.stdout.strip() if out.returncode == 0 else ""
+
+
+def unchanged_from_parent(cwd: str, path: str) -> bool:
+    """ステージされた中身が、コミットの親(HEAD か、マージ中なら MERGE_HEAD)のどちらかと同じか。
+
+    マージのコミットでは相手側の全ファイルがステージされる。その中に、試験データとして
+    本物と同じ形の競合マーカーを含むファイル(`scripts/tests/test_merge_ledgers.py`)があり、
+    2026-09-19 に `main` の取り込みが止まった。自分が触っていないファイルは、相手側で
+    既に通ったものなので見ない。**自分が変えた(どの親とも違う)ファイルだけを見る。**
+    """
+    staged = _blob(cwd, f":{path}")
+    if not staged:
+        return False
+    for parent in ("HEAD", "MERGE_HEAD"):
+        if _blob(cwd, f"{parent}:{path}") == staged:
+            return True
+    return False
+
+
 def check(cwd: str) -> list[str]:
     bad = []
     for path in staged_files(cwd):
         try:
+            if unchanged_from_parent(cwd, path):
+                continue
             if conflicted(cwd, path):
                 bad.append(path)
         except Exception:  # noqa: BLE001
