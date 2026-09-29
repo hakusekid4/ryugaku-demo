@@ -21,6 +21,18 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 10,
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-tone.py\" || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-tone.py\""
+          }
+        ]
+      }
     ]
   },
   "permissions": {
@@ -47,7 +59,11 @@
       "Bash(find:*)",
       "Bash(mkdir:*)",
       "Bash(python -m unittest discover:*)",
-      "Bash(python3 -m unittest discover:*)"
+      "Bash(python3 -m unittest discover:*)",
+      "mcp__Claude_Code_Remote__list_repos",
+      "mcp__Claude_Code_Remote__add_repo",
+      "mcp__claude-code-remote__list_repos",
+      "mcp__claude-code-remote__add_repo"
     ],
     "deny": [
       "Bash(git push --force:*)",

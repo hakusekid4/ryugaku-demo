@@ -30,13 +30,13 @@ description: 新しいプロジェクト・新しいリポジトリ・新しい�
 3. **1 問ずつ聞く**
    - 選択肢を 3〜4 個添える。**「決めていない / 任せる」を必ず 1 つ入れる**
    - 「任せる」が返ったら AI が仮で決め、`仮:` を付けて記録し、次の問へ進む。**そこで止まらない**
-   - 答えが返るたびに `python scripts/intake_answer.py <スラッグ> <Q の ID> --answer "…" --interp "…" --next "<次の Q の ID と題>"` で `intake.md` へ書き込む(会話が切れても再開できるように)。`next` の欄と次の問の枠は自動で入る。任せるなら `--interp` の代わりに `--tentative "<仮の値>" --why "<根拠>"`。最後の問は `--next` の代わりに `--finish`。ai-config 以外ではこのスクリプトが無いので手元にメモする
+   - 答えが返るたびに `python scripts/intake_answer.py <スラッグ> <Q の ID> --answer "…" --interp "…" --next "<次の Q の ID と題>"` で `intake.md` へ書き込む(会話が切れても再開できるように)。`next` の欄と次の問の枠は自動で入る。最初の発言などで先に答えが出た問は `--ahead --answer "…" --interp "…"` で書く(聞いた数は増えない)。任せるなら `--interp` の代わりに `--tentative "<仮の値>" --why "<根拠>"`。最後の問は `--next` の代わりに `--finish`。ai-config 以外ではこのスクリプトが無いので手元にメモする
    - 前の答えで不要になった問は飛ばす
 4. **最大 12 問で打ち切る。** 残りは仮置きして企画書を書く。本人が「もういいから作って」と言ったらその場で打ち切る
 5. **企画書を書く**(`charter.md`)。目的 / 成功の数字 / 作るもの / 元手 / リスク / 最初の 3 手 / 仮で置いたもの / やめる条件
 6. **後始末**(確認は取らない)
    - `projects/README.md` の一覧に 1 行足す
-   - 新しいリポジトリを作ると決まったら **AI がその場で作る**(既定は非公開。公開は本人が「公開」と言ったときだけ)。作ったあと `python scripts/ai_config_sync.py sync` で共通設定を配る。**作成が権限不足(403)で失敗したら**、README と CLAUDE.md の中身を `projects/<スラッグ>/seed/` に用意し、本人の作業として `A-` を台帳に、次のセッション向けの手順を `docs/requests.md` に `W-` で積む(2026-09-19 の keiba-cloud で実際に起きた)
+   - 新しいリポジトリを作ると決まったら **AI がその場で作る**(既定は非公開。公開は本人が「公開」と言ったときだけ)。作ったあと `python scripts/ai_config_sync.py sync` で共通設定を配る(クラウドのセッションで 403 になったら、台帳 `repositories.json` に足してから `python scripts/ai_config_place_local.py <名前> <clone 先>` で置いて git push)。**作成が権限不足(403)で失敗したら**、README と CLAUDE.md の中身を `projects/<スラッグ>/seed/` に用意し、本人の作業として `A-` を台帳に、次のセッション向けの手順を `docs/requests.md` に `W-` で積む(2026-09-19 の keiba-cloud で実際に起きた)
    - 収益を狙うものは `ai-systems/monetization-strategies.md` に節を足す
    - 残った判断は `D-` として台帳へ積む。その場で追撃しない
 
