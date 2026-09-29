@@ -33,6 +33,18 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 10,
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-tone.py\" || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-tone.py\""
+          }
+        ]
+      }
     ]
   },
   "permissions": {
