@@ -59,7 +59,7 @@ description: 計画・仕様書(spec.md)・会話を、垂直スライス(機能
 - [ ] 本人確認: (あれば。/goal には入れない)
 
 ## /goal(貼るだけで回る)
-/goal docs/plans/<スラッグ>/tickets/01-<スラッグ>.md を /run-ticket の手順で実装し、「完了条件」のコマンドがすべて通り状態が done になっている。または /run-ticket の「止まってよいとき」(同じ失敗 3 回・着手から 2 時間など)に当たり、状態が ready-for-human になって理由が記録されている
+(手で書かない。下の `fill-goals` が作る)
 
 ## 記録
 (実装した AI が追記する)
@@ -71,12 +71,15 @@ description: 計画・仕様書(spec.md)・会話を、垂直スライス(機能
 
 最後に `docs/plans/<スラッグ>/tickets/README.md` に一覧(番号・題・依存・状態)を書く。
 
-書き終えたら `python .claude/tools/tickets.py lint docs/plans/<スラッグ>` を走らせ、問題 0 件にする(状態の綴り・無い番号への依存・循環・コマンドの無い完了条件を見る。ai-config では `scripts/tickets.py`)。
+書き終えたら次の 2 つを走らせる(ai-config では `scripts/tickets.py`)。
+
+1. `python .claude/tools/tickets.py fill-goals docs/plans/<スラッグ>` —— 各チケットの「/goal」欄に、**題・作るもの・完了条件のコマンド全部・止まり方**を入れた 1 行を作る(2026-10-06 本人「自動で作る goal が短すぎる」。ファイル名だけの /goal では、判定役が何を作るか・何で確かめるかを知らずに回る)。**作るもの・完了条件を直したら、もう一度走らせる**
+2. `python .claude/tools/tickets.py lint docs/plans/<スラッグ>` —— 問題 0 件にする(状態の綴り・無い番号への依存・循環・コマンドの無い完了条件・**完了条件のコマンドが入っていない短い /goal** を見る)
 
 ## 6. 回し方を伝える
 
 本人への報告は次の 3 行で足りる。
 
 - 何枚に分けたか・最初に着手できるもの(前線 = 依存がすべて done のもの)
-- 最初の 1 枚の `/goal` の 1 行(そのまま貼れば回る)
+- **計画まとめて回す `/goal` の 1 行**(`python .claude/tools/tickets.py goal docs/plans/<スラッグ>` の出力。前線が空になるまで 1 枚ずつ片付け続ける)と、最初の 1 枚だけ回す `/goal`(そのチケットの「/goal」欄)
 - 定期起動(Routine)で回すなら `/run-ticket docs/plans/<スラッグ>` を指示文にすればよいこと
