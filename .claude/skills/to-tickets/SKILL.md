@@ -71,6 +71,8 @@ description: 計画・仕様書(spec.md)・会話を、垂直スライス(機能
 
 最後に `docs/plans/<スラッグ>/tickets/README.md` に一覧(番号・題・依存・状態)を書く。
 
+書き終えたら `python .claude/tools/tickets.py lint docs/plans/<スラッグ>` を走らせ、問題 0 件にする(状態の綴り・無い番号への依存・循環・コマンドの無い完了条件を見る。ai-config では `scripts/tickets.py`)。
+
 ## 6. 回し方を伝える
 
 本人への報告は次の 3 行で足りる。
