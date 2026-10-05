@@ -59,7 +59,7 @@ description: 計画・仕様書(spec.md)・会話を、垂直スライス(機能
 - [ ] 本人確認: (あれば。/goal には入れない)
 
 ## /goal(貼るだけで回る)
-/goal docs/plans/<スラッグ>/tickets/01-<スラッグ>.md を /run-ticket の手順で実装し、「完了条件」のコマンドがすべて通り、状態が done になっている
+/goal docs/plans/<スラッグ>/tickets/01-<スラッグ>.md を /run-ticket の手順で実装し、「完了条件」のコマンドがすべて通り状態が done になっている。または /run-ticket の「止まってよいとき」(同じ失敗 3 回・着手から 2 時間など)に当たり、状態が ready-for-human になって理由が記録されている
 
 ## 記録
 (実装した AI が追記する)
