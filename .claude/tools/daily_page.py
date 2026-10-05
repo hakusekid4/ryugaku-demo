@@ -3,7 +3,8 @@
 
 目的はセッションの題、実行内容はこのページで示す(2026-10-05 本人決定、grill #2〜#5)。
 頭に「目的(題)」と「紐づく定期起動」、本体は 今日やったこと / 数字 / 次にやること /
-本人に要ること の 4 欄。空の欄は「無し」と出す。**標準ライブラリだけで動く**(全リポジトリへ配る)。
+本人に要ること の 4 欄。空の欄は「無し」と出す。出力は Artifact の決まりに合わせ、doctype・html・head・body を
+含まない(公開時に外枠が付く)。<title> と <style> を先頭に置き、色は明暗両方の変数で持つ。**標準ライブラリだけで動く**(全リポジトリへ配る)。
 
     python .claude/tools/daily_page.py page.json -o page.html   # JSON から
     python .claude/tools/daily_page.py page.md -o page.html     # Markdown から
@@ -53,8 +54,8 @@ EXAMPLE_MD = """# ai-config: 開発の流れと仕組みの見直し
 
 CSS = """
 :root{--bg:#f7f7f5;--card:#fff;--fg:#1d1d1f;--muted:#6b6b70;--line:#e3e3e0;--accent:#2f6fde;--warn:#b5471b}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#151517;--card:#1f1f22;--fg:#ececee;--muted:#9a9aa1;--line:#2e2e33;--accent:#7aa7ff;--warn:#ff9a6b}}
-:root[data-theme="dark"]{--bg:#151517;--card:#1f1f22;--fg:#ececee;--muted:#9a9aa1;--line:#2e2e33;--accent:#7aa7ff;--warn:#ff9a6b}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#151517;--card:#1f1f22;--fg:#ececee;--muted:#9a9aa1;--line:#2e2e33;--accent:#7aa7ff;--warn:#ff9a6b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#151517;--card:#1f1f22;--fg:#ececee;--muted:#9a9aa1;--line:#2e2e33;--accent:#7aa7ff;--warn:#ff9a6b;color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
 main{max-width:760px;margin:0 auto;padding:24px 16px 48px}
@@ -102,11 +103,9 @@ def render(data: dict) -> str:
     else:
         rt = "<li>無し</li>"
     parts = [
-        "<!doctype html>",
-        '<html lang="ja"><head><meta charset="utf-8">',
-        '<meta name="viewport" content="width=device-width, initial-scale=1">',
         f"<title>{esc(title)}</title>",
-        f"<style>{CSS}</style></head><body><main>",
+        f"<style>{CSS}</style>",
+        '<main lang="ja">',
         "<header>",
         f"<h1>{esc(title)}</h1>",
         f'<div class="date">{esc(str(data.get("date") or ""))} 時点</div>',
@@ -118,7 +117,7 @@ def render(data: dict) -> str:
         body = ("<ul>" + "".join(f"<li>{esc(i)}</li>" for i in items) + "</ul>") if items \
             else '<p class="none">無し</p>'
         parts.append(f'<section class="{key}"><h2>{label}</h2>{body}</section>')
-    parts.append("</main></body></html>")
+    parts.append("</main>")
     return "\n".join(parts) + "\n"
 
 
