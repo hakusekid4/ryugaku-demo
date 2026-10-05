@@ -11,9 +11,10 @@ description: docs/plans/<スラッグ>/tickets/ のチケットを 1 枚取り�
 
 `/goal` は Claude Code の組み込みコマンド。条件を 1 つ置くと、Claude は止まる前に毎回その条件を確かめ、満たすまで作業を続ける。チケットの「/goal」欄の 1 行を本人が貼れば、このスキルの手順で通るまで回る。
 
-```
-/goal docs/plans/<スラッグ>/tickets/01-<スラッグ>.md を /run-ticket の手順で実装し、「完了条件」のコマンドがすべて通り状態が done になっている。または /run-ticket の「止まってよいとき」(同じ失敗 3 回・着手から 2 時間など)に当たり、状態が ready-for-human になって理由が記録されている
-```
+/goal の 1 行は手で書かず、道具が作る(2026-10-06 本人「自動で作る goal が短すぎる」)。題・作るもの・完了条件のコマンド全部・止まり方が入る。
+
+- 1 枚だけ: `python .claude/tools/tickets.py goal docs/plans/<スラッグ>/tickets/01-<スラッグ>.md`(チケットの「/goal」欄と同じ)
+- 計画まとめて: `python .claude/tools/tickets.py goal docs/plans/<スラッグ>` —— 前線が空になるまで 1 枚ずつ片付け続ける。1 枚が止まってよいときに当たったら、そのチケットだけ ready-for-human にして残りの前線へ進む
 
 `/goal clear` で途中で止められる。定期起動から回すときは、指示文に `/run-ticket docs/plans/<スラッグ>` と書く(前線の 1 枚を取る)。
 
