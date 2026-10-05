@@ -6,6 +6,13 @@
 
     python scripts/tickets.py frontier docs/plans/<スラッグ>   # 前線を番号順に出す
     python scripts/tickets.py lint docs/plans/<スラッグ>       # 書き方の点検
+    python scripts/tickets.py goal <チケットのファイル>        # 中身入りの /goal の 1 行を出す
+    python scripts/tickets.py goal docs/plans/<スラッグ>       # 計画まとめて回す /goal の 1 行を出す
+    python scripts/tickets.py fill-goals docs/plans/<スラッグ> # 着手前のチケットの /goal 欄を作り直す
+
+/goal の 1 行(2026-10-06 本人「自動で作る goal が短すぎる」): 前はチケットのファイル名と
+「完了条件が通る」だけで、/goal の判定役は何を作るか・何で確かめるかを知らずに回っていた。
+いまは題・作るもの・完了条件のコマンド全部・止まり方を 1 行に入れる。
 
 終了コード: frontier = 0(前線が空でも 0)/ lint = 0 問題なし・1 問題あり
 """
@@ -55,6 +62,96 @@ def load(path: Path) -> list[Ticket]:
     return out
 
 
+GOAL_HEAD = "## /goal"
+STOP = ("/run-ticket の「止まってよいとき」(同じ失敗 3 回・着手から 2 時間・本人の判断が要る・完了条件が誤っている)"
+        "に当たり、状態が ready-for-human になって「記録」に `- 止めた:` の 1 行で理由と次の案が書いてある。"
+        "テストや完了条件を緩めて通さない")
+
+
+GOAL_MAX = 4000   # /goal の条件の上限(code.claude.com/docs/en/goal、2026-10-06 確認)
+BUILD_MAX = 1200  # 作るものはここで切る(完了条件と止まり方を必ず残すため)
+
+
+def _section(text: str, head: str) -> str:
+    m = re.search(rf"^## {re.escape(head)}[^\n]*$(.*?)(?=^## |\Z)", text, re.M | re.S)
+    return m.group(1).strip() if m else ""
+
+
+def _commands(checks: list[str]) -> list[str]:
+    out = []
+    for c in checks:
+        if "本人確認" in c:
+            continue
+        out += re.findall(r"`[^`]+`", c)
+    return out
+
+
+def _rel(path: Path) -> str:
+    parts = Path(path).resolve().parts
+    return "/".join(parts[parts.index("docs"):]) if "docs" in parts else str(path)
+
+
+def goal_for_ticket(path: Path) -> str:
+    """チケット 1 枚から、そのまま貼れる中身入りの /goal の 1 行を作る。"""
+    path = Path(path)
+    text = path.read_text(encoding="utf-8")
+    m = re.search(r"^# \d+:\s*(.+)$", text, re.M)
+    title = m.group(1).strip() if m else path.stem
+    build = " ".join(ln.strip() for ln in _section(text, "作るもの").splitlines() if ln.strip())
+    if len(build) > BUILD_MAX:
+        build = build[:BUILD_MAX] + "…(続きはチケット本文)"
+    cmds = _commands(_checks(text))
+    conds = "、".join(f"{c} が通る" for c in cmds) if cmds else "(コマンドが無い。lint で直す)"
+    return _cap(f"/goal {_rel(path)}「{title}」を /run-ticket の手順(着手を記す → /tdd → 完了条件を全部走らせる → "
+            f"見直し → 閉じる)で片付ける。作るもの: {build} 完了の判定: {conds}。"
+            f"各コマンドを実際に走らせ、終了コードと出力の要点を会話に示している(判定役は会話しか読まない)。"
+            f"そのうえでチケットの状態が done になり、「記録」に `- 閉じた:` の 1 行(日本時間と結果)がある。"
+            f"または、{STOP}")
+
+
+def _cap(g: str) -> str:
+    if len(g) > GOAL_MAX:
+        raise ValueError(f"/goal の 1 行が {len(g)} 字で上限 {GOAL_MAX} 字を超える。完了条件を減らすかチケットを割る")
+    return g
+
+
+def goal_for_plan(plan: Path) -> str:
+    """計画フォルダの前線が空になるまで、チケットを 1 枚ずつ片付け続ける /goal の 1 行。"""
+    plan = Path(plan)
+    if plan.name == "tickets":
+        plan = plan.parent
+    ts = load(plan)
+    left = [f"{t.num}" for t in ts if t.state not in {"done", "wontfix"}]
+    rel = _rel(plan)
+    return _cap(f"/goal {rel} のチケット(残り {', '.join(left) or 'なし'})を、`python scripts/tickets.py frontier {rel}`"
+            f"(ai-config 以外は `python .claude/tools/tickets.py`)の前線の先頭から 1 枚ずつ /run-ticket の手順で"
+            f"片付け、各チケットの「完了条件」のコマンドを全部走らせて終了コードと出力の要点を会話に示し、"
+            f"done にして「記録」に `- 閉じた:` を書く。"
+            f"1 枚ごとにコミットして push する。前線が空になったら終わり。1 枚が止まってよいとき"
+            f"(同じ失敗 3 回・着手から 2 時間・本人の判断が要る)に当たったら、そのチケットを ready-for-human にして"
+            f"「記録」に `- 止めた:` の 1 行を書き、残りの前線へ進む。テストや完了条件を緩めて通さない")
+
+
+def fill_goals(path: Path) -> int:
+    """着手前(ready-for-agent)のチケットの /goal 欄を goal_for_ticket の 1 行に入れ替える。数を返す。"""
+    n = 0
+    for t in load(Path(path)):
+        if t.state != "ready-for-agent":
+            continue
+        text = t.path.read_text(encoding="utf-8")
+        block = f"{GOAL_HEAD}(貼るだけで回る)\n{goal_for_ticket(t.path)}\n\n"
+        m = re.search(rf"^{re.escape(GOAL_HEAD)}[^\n]*$.*?(?=^## |\Z)", text, re.M | re.S)
+        if m:
+            new = text[:m.start()] + block + text[m.end():]
+        else:
+            r = re.search(r"^## 記録", text, re.M)
+            new = text[:r.start()] + block + text[r.start():] if r else text.rstrip() + "\n\n" + block
+        if new != text:
+            t.path.write_text(new, encoding="utf-8")
+            n += 1
+    return n
+
+
 def frontier(ts: list[Ticket]) -> list[Ticket]:
     done = {t.num for t in ts if t.state == "done"}
     return [t for t in ts if t.state == "ready-for-agent" and all(d in done for d in t.deps)]
@@ -77,6 +174,12 @@ def lint(ts: list[Ticket]) -> list[str]:
         machine = [c for c in t.checks if "本人確認" not in c]
         if t.state in {"ready-for-agent", "in-progress"} and not any(_has_command(c) for c in machine):
             msgs.append(f"{name}: 完了条件にコマンド(`…`)が 1 つも無い。/goal で判定できない")
+        if t.state == "ready-for-agent":
+            goal = _section(t.path.read_text(encoding="utf-8"), "/goal")
+            missing = [c for c in _commands(t.checks) if c not in goal]
+            if goal and missing:
+                msgs.append(f"{name}: /goal の 1 行が短い(完了条件の {', '.join(missing)} が入っていない)。"
+                            f"`tickets.py fill-goals` で作り直す")
     graph = {t.num: t.deps for t in ts}
 
     def cyclic(n: str, seen: tuple[str, ...]) -> bool:
@@ -92,9 +195,16 @@ def lint(ts: list[Ticket]) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("cmd", choices=["frontier", "lint"])
+    ap.add_argument("cmd", choices=["frontier", "lint", "goal", "fill-goals"])
     ap.add_argument("path")
     a = ap.parse_args(argv)
+    if a.cmd == "goal":
+        p = Path(a.path)
+        print(goal_for_ticket(p) if p.is_file() else goal_for_plan(p))
+        return 0
+    if a.cmd == "fill-goals":
+        print(f"/goal を作り直した: {fill_goals(Path(a.path))} 枚")
+        return 0
     ts = load(Path(a.path))
     if a.cmd == "frontier":
         fr = frontier(ts)
