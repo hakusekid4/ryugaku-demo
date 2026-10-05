@@ -16,7 +16,7 @@ description: やり取りの最後に「自動化できること」を探して�
 ## 手順
 
 1. **先に台帳を読む**(重複を挙げないため)
-   - このリポジトリが `ai-config` なら `ai-systems/automation-backlog.md` の第 3・4・5 節
+   - このリポジトリが `ai-config` なら `ai-systems/automation-backlog.md` の第 3 節と `ai-systems/automation-archive.md`(実装済み・見送り)
    - それ以外なら `ai-config-inbox/` の過去の `kind: automation` を見る
 2. **今回のやり取りに 6 つの問いを当てる**。最大 3 件まで挙げる。0 件でよい
    1. 同じ手順を前にもやったか → スクリプト化・スキル化
@@ -31,7 +31,7 @@ description: やり取りの最後に「自動化できること」を探して�
    - **C(見送り)**: 月 1 回未満しか起きない / 作るほうが遅い / 効果が測れない
 4. **A はその場で作ってコミットする。** 本人に確認は取らない
 5. **記録する**
-   - `ai-config` なら: A は台帳の第 4 節、B は第 3 節、C は第 5 節へ直接書く
+   - `ai-config` なら: A は `ai-systems/automation-archive.md` の実装済みの表の先頭、B は台帳 `automation-backlog.md` の第 3 節、C は archive の見送りの表へ直接書く
    - それ以外のリポジトリなら: B と、A で実装したものを `/ai-config-memo`(`kind: automation`)で `ai-config-inbox/` へ送る
 6. **本人には 1〜3 行で伝える。** 0 件なら「自動化の探索: 今回は無し。」の 1 行
 
