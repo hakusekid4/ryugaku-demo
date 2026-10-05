@@ -62,6 +62,14 @@ def load(path: Path) -> list[Ticket]:
     return out
 
 
+def _now() -> str:
+    """いまの日本時間。`2026-10-06 13:50(JST)` の形。"""
+    from datetime import datetime, timedelta, timezone
+
+    jst = datetime.now(timezone(timedelta(hours=9)))
+    return jst.strftime("%Y-%m-%d %H:%M(JST)")
+
+
 GOAL_HEAD = "## /goal"
 STOP = ("/run-ticket の「止まってよいとき」(同じ失敗 3 回・着手から 2 時間・本人の判断が要る・完了条件が誤っている)"
         "に当たり、状態が ready-for-human になって「記録」に `- 止めた:` の 1 行で理由と次の案が書いてある。"
@@ -193,11 +201,110 @@ def lint(ts: list[Ticket]) -> list[str]:
     return msgs
 
 
+def set_state(path: Path, state: str) -> None:
+    """チケットの「状態」を書き換える。"""
+    if state not in STATES:
+        raise ValueError(f"知らない状態: {state}。{sorted(STATES)} のどれか")
+    text = path.read_text(encoding="utf-8")
+    new, n = re.subn(r"^- 状態:\s*.+$", f"- 状態: {state}", text, count=1, flags=re.M)
+    if not n:
+        raise ValueError(f"「- 状態:」の行が無い: {path}")
+    path.write_text(new, encoding="utf-8")
+
+
+def _append_record(path: Path, line: str) -> None:
+    """「## 記録」の末尾に 1 行足す。節が無ければ作る。"""
+    text = path.read_text(encoding="utf-8").rstrip("\n")
+    if not re.search(r"^## 記録\s*$", text, re.M):
+        text += "\n\n## 記録"
+    path.write_text(text + "\n" + line + "\n", encoding="utf-8")
+
+
+def start(path: Path, when: str) -> None:
+    """着手を記す。状態を in-progress にし、「記録」に `- 着手:` を足す。"""
+    set_state(path, "in-progress")
+    _append_record(path, f"- 着手: {when}")
+
+
+def close(path: Path, when: str, note: str, *, tick: bool = True) -> None:
+    """閉じる。状態を done にし、完了条件に印を付け、`- 閉じた:` を足す。
+
+    **手で 4 か所を直していた**(状態・印・記録・一覧の表)。
+    5 枚続けて同じことをしたので道具にした(2026-10-06 の自動化探索)。
+    `tick=False` にすると印は付けない(本人確認が残っているときなど)。
+    """
+    if tick:
+        text = path.read_text(encoding="utf-8")
+        m = re.search(r"^## 完了条件\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
+        if m:
+            body = re.sub(r"^(\s*)- \[ \]", r"\1- [x]", m.group(1), flags=re.M)
+            path.write_text(text[: m.start(1)] + body + text[m.end(1) :], encoding="utf-8")
+    set_state(path, "done")
+    _append_record(path, f"- 閉じた: {when}。{note}")
+
+
+def update_readme(plan: Path) -> int:
+    """`tickets/README.md` の表の状態を、チケットの実際の状態に合わせる。
+
+    **表とチケットがずれるのがいちばん困る。**読む人は表しか見ない。
+    """
+    folder = Path(plan)
+    if (folder / "tickets").is_dir():
+        folder = folder / "tickets"
+    readme = folder / "README.md"
+    if not readme.is_file():
+        return 0
+    text = readme.read_text(encoding="utf-8")
+    n = 0
+    for t in load(folder):
+        # | 04 | 題 | 依存 | 状態 |
+        pat = rf"^(\|\s*{t.num}\s*\|[^|]*\|[^|]*\|\s*)([^|]*?)(\s*\|)$"
+
+        def repl(m: re.Match) -> str:
+            shown = "**done**" if t.state == "done" else t.state
+            # 「**done**(本人確認だけ残り)」のような補足は残す
+            tail = m.group(2).strip()
+            if t.state == "done" and tail.startswith("**done**"):
+                return m.group(0)
+            return m.group(1) + shown + m.group(3)
+
+        text, k = re.subn(pat, repl, text, count=1, flags=re.M)
+        n += k
+    readme.write_text(text, encoding="utf-8")
+    return n
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("cmd", choices=["frontier", "lint", "goal", "fill-goals"])
+    ap.add_argument(
+        "cmd",
+        choices=["frontier", "lint", "goal", "fill-goals", "start", "close", "readme"],
+    )
     ap.add_argument("path")
+    ap.add_argument("--when", default="", help="start / close のとき、日本時間")
+    ap.add_argument("--note", default="", help="close のとき、結果の 1 行")
+    ap.add_argument(
+        "--no-tick", action="store_true",
+        help="close のとき、完了条件の印を付けない(本人確認が残っているときなど)",
+    )
     a = ap.parse_args(argv)
+    if a.cmd in {"start", "close"}:
+        when = a.when or _now()
+        p = Path(a.path)
+        if a.cmd == "start":
+            start(p, when)
+            print(f"着手を記した: {p}({when})")
+        else:
+            if not a.note:
+                print("--note に結果の 1 行を渡す", file=sys.stderr)
+                return 2
+            close(p, when, a.note, tick=not a.no_tick)
+            print(f"閉じた: {p}({when})")
+            print(f"一覧の表を直した: {update_readme(p.parent)} 行")
+        return 0
+    if a.cmd == "readme":
+        print(f"一覧の表を直した: {update_readme(Path(a.path))} 行")
+        return 0
     if a.cmd == "goal":
         p = Path(a.path)
         print(goal_for_ticket(p) if p.is_file() else goal_for_plan(p))
