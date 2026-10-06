@@ -102,9 +102,97 @@ def check_file(repo: Path, rel: str, ref: str = "origin/main") -> dict:
     _, last = git(repo, "log", "-1", "--format=%h %ad %s", "--date=format:%m-%d %H:%M",
                   ref, "--", rel)
     info["last"] = last
-    _, touched = git(repo, "log", "--format=%h", f"--since=48 hours ago", ref, "--", rel)
+    _, touched = git(repo, "log", "--format=%h", f"--since={VANISHED_SINCE}", ref, "--", rel)
     info["recent"] = len([l for l in touched.splitlines() if l.strip()])
+    # 手で grep していた分(2026-10-06、AUT-A250)
+    info["vanished"] = vanished_lines(repo, rel, ref)
     return info
+
+
+#: 「消えた行の候補」を探す窓(時間)。司令塔の連絡と同じ 24 時間より少し広く取る
+VANISHED_SINCE = "48 hours ago"
+#: 短すぎる行は偶然一致するので見ない(空行・記号だけの行・`}` など)
+VANISHED_MIN_CHARS = 12
+#: 出す件数の上限。多すぎると読まれない
+VANISHED_MAX = 5
+
+
+def _added_lines(repo: Path, rel: str, commit: str) -> list[str]:
+    """そのコミットがこのファイルに**足した行**を返す。"""
+    _, diff = git(repo, "show", "--format=", "--unified=0", commit, "--", rel)
+    out = []
+    for line in diff.splitlines():
+        if line.startswith("+") and not line.startswith("+++"):
+            body = line[1:].strip()
+            if len(body) >= VANISHED_MIN_CHARS:
+                out.append(body)
+    return out
+
+
+def _session_of(repo: Path, commit: str) -> str:
+    """コミットの `Claude-Session:` 行。無ければ空。
+
+    どのセッションが書いたコミットかは、著者名では分からない(どれも Claude)。
+    """
+    _, body = git(repo, "log", "-1", "--format=%B", commit)
+    for line in body.splitlines():
+        if line.lower().startswith("claude-session:"):
+            return line.split(":", 1)[1].strip()
+    return ""
+
+
+def latest_per_session(
+    repo: Path, rel: str, ref: str = "origin/main", *, limit: int = 2
+) -> list[tuple[str, str, str]]:
+    """窓の中で、**セッションごとに最も新しい 1 件**を新しい順に返す。
+
+    `(コミット, 題, セッション)`。`limit` で見るセッション数を絞る。
+    **古い版の行まで見ると雑音ばかりになる**(同じ節を何度も書き直している
+    スキルの文書で、言い換えられた行が 10 件以上挙がった。2026-10-06)。
+    知りたいのは「自分の最後の変更が、相手の最後の変更を消していないか」だけ。
+    """
+    code, log = git(repo, "log", "--format=%h\t%s", f"--since={VANISHED_SINCE}",
+                    ref, "--", rel)
+    if code != 0:
+        return []
+    out: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
+    for row in log.splitlines():
+        if "\t" not in row:
+            continue
+        sha, subject = row.split("\t", 1)
+        sess = _session_of(repo, sha) or sha  # 印が無ければ 1 件扱い
+        if sess in seen:
+            continue
+        seen.add(sess)
+        out.append((sha, subject, sess))
+        if len(out) >= limit:
+            break
+    return out
+
+
+def vanished_lines(repo: Path, rel: str, ref: str = "origin/main") -> list[dict]:
+    """**相手が足したのに、いまのファイルに無い行**を探す。
+
+    司令塔の連絡は「相手の変更を消していないか確かめて」と言うが、
+    そこだけは道具が何も言わず、毎回 `git show` を手で読んで grep していた
+    (2026-10-06 に 1 回。前にも同じことをしている)。
+
+    見るのは**セッションごとに最も新しい 1 件だけ**。窓の中の全コミットを見ると、
+    後から言い換えられた古い行が大量に挙がって読まれなくなる。
+
+    **これは失敗の判定ではない。**終了コードは変えない。
+    読む人の目を向ける先を示すだけ。
+    """
+    code, current = git(repo, "show", f"{ref}:{rel}")
+    if code != 0:
+        return []
+    out = []
+    for sha, subject, _sess in latest_per_session(repo, rel, ref):
+        missing = [l for l in _added_lines(repo, rel, sha) if l not in current]
+        if missing:
+            out.append({"commit": sha, "subject": subject, "missing": missing})
+    return out
 
 
 def render(results: list[dict], ref: str = "origin/main") -> str:
@@ -121,11 +209,23 @@ def render(results: list[dict], ref: str = "origin/main") -> str:
             out.append(f"    [取り込む] {line}")
         for line in r.get("ahead", []):
             out.append(f"    [押す]     {line}")
+        for v in r.get("vanished", []):
+            out.append(f"- 消えた行の候補: {v['commit']} {v['subject']}")
+            for line in v["missing"][:VANISHED_MAX]:
+                out.append(f"      - {line[:110]}")
+            if len(v["missing"]) > VANISHED_MAX:
+                out.append(f"      ほか {len(v['missing']) - VANISHED_MAX} 行")
         out.append("")
     if any(r["act"] for r in results):
         out.append("**手を打つものがある。**上の [取り込む] を先に、そのあと [押す]。")
     else:
         out.append("**どれも安全。**返事は要らない(司令塔の連絡は返信不要)。")
+    out.append("")
+    if any(r.get("vanished") for r in results):
+        out.append("")
+        out.append("**「消えた行の候補」は失敗の判定ではない。**"
+                   "後から言い換えられた行も挙がる。"
+                   "心当たりが無い行があれば、その 1 件だけ差分を読む。")
     out.append("")
     out.append("**中身の意味までは見ていない。**「相手の変更を消したか」は、"
                "上の差分を自分の目で読むこと。")
