@@ -33,6 +33,7 @@ description: 計画・仕様書(spec.md)・会話を、垂直スライス(機能
 - コマンドの終了コード: 「`python -m pytest tests/test_late_money.py` が通る」
 - 数値の閾値: 「`python scripts/gate.py judge` の出力で `delta_nats` が 0 以上」
 - ファイルの存在と中身: 「`reports/late_money.json` があり、`races` が 100 件以上」
+- **試験のコマンドは、そのリポジトリが実際に使っているものにする**(`python -m pytest` が入っていない所では、チケットを書いたあとの最初の 1 枚で「No module named pytest」で落ちる。ai-config は `python -m unittest scripts.tests.test_xxx -k 名前`)。書く前に `python -c "import pytest"` で確かめる
 - 人の目が要るものは「本人確認: 〜」と書き、**/goal の条件には入れない**(そこは止まって報告する)
 
 ## 4. 本人に見せる(待たずに進める)
