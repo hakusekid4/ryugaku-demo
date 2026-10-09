@@ -184,6 +184,13 @@ def main() -> int:
     ap.add_argument("--now", default=None, help="試験用。この時刻を「いま」とみなす")
     args = ap.parse_args()
 
+    # **母艦(自前の実行役 = self-hosted runner)で走るときは数えない**(2026-10-09、D-089)。
+    # 自前の実行役の分は請求されないので、止める理由が無い。GitHub が実行役ごとに
+    # `RUNNER_ENVIRONMENT`(github-hosted / self-hosted)を入れる。
+    if os.environ.get("RUNNER_ENVIRONMENT") == "self-hosted":
+        print("走ってよい。母艦(自前の実行役)で動くので、持ち分は数えない")
+        return GO
+
     now = (datetime.now(JST) if args.now is None
            else datetime.fromisoformat(args.now).astimezone(JST))
 
