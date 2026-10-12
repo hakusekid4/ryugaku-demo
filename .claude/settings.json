@@ -29,7 +29,7 @@
           {
             "type": "command",
             "timeout": 10,
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-tone.py\" || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-tone.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-tone.py\" || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-tone.py\" || true"
           }
         ]
       }
@@ -41,7 +41,7 @@
           {
             "type": "command",
             "timeout": 10,
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-tone.py\" || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-tone.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-tone.py\" || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-tone.py\" || true"
           }
         ]
       }
@@ -53,7 +53,7 @@
           {
             "type": "command",
             "timeout": 10,
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-show-doc.py\" || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-show-doc.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-show-doc.py\" || python \"$CLAUDE_PROJECT_DIR/.claude/hooks/ai-config-show-doc.py\" || true"
           }
         ]
       }
