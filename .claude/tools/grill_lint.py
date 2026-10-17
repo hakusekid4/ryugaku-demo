@@ -30,7 +30,8 @@ Q_HEAD = re.compile(r"^### (Q\d+[a-z]?)\s+(.*)$", re.M)
 #: 「残したもの」に挙がったパス。バッククォートで囲まれ、`/` か `.` を含むもの
 PATH_IN_TICK = re.compile(r"`([^`\s]*[/.][^`\s]*)`")
 #: 未回答の印
-UNANSWERED = "(未)"
+# 答え待ちの書き方。2026-10-16 に「(答え待ち)」と書いて「答えあり」と誤読された(AUT-A278)
+UNANSWERED = ("(未)", "答え待ち", "未回答")
 
 
 def front_matter(text: str, key: str) -> str:
@@ -50,7 +51,9 @@ def _blocks(text: str) -> list[tuple[str, str]]:
 
 def _answered(body: str) -> bool:
     m = re.search(r"^- \*\*答え\*\*:\s*(.*)$", body, re.M)
-    return bool(m) and UNANSWERED not in m.group(1)
+    if not m or not m.group(1).strip():
+        return False
+    return not any(w in m.group(1) for w in UNANSWERED)
 
 
 def lint_one(path: Path) -> list[str]:
