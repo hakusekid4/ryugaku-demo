@@ -10,7 +10,8 @@
     python .claude/tools/daily_page.py page.md -o page.html     # Markdown から
     python .claude/tools/daily_page.py --example                # 手本を標準出力へ
 
-JSON の形: {"title", "date", "routines": [{"when", "what"} か文字列], "done", "numbers",
+JSON の形: {"title", "date", "routines": [{"when", "what"} か文字列], "source", "session",
+           "done", "numbers",
 "next", "needs"}(4 欄は文字列か文字列の並び)。Markdown の形は `--example-md` で出る。
 """
 from __future__ import annotations
@@ -71,6 +72,7 @@ section.needs h2{color:var(--warn)}
 ul{margin:0;padding-left:1.2em}
 li{overflow-wrap:anywhere}
 .none{color:var(--muted);margin:0}
+.src{color:var(--muted);font-size:.82rem;margin:14px 0 0}
 """
 
 
@@ -112,6 +114,20 @@ def render(data: dict) -> str:
         f'<ul class="routines"><li><b>定期起動</b></li>{rt}</ul>',
         "</header>",
     ]
+    # **どの版から書いたか**を載せる(AUT-A286)。引き継ぎの日は同じリンクを
+    # 2 つのセッションが同じ日に書き換えるので、古い checkout から書いた版が
+    # 新しい事実を上書きしうる(2026-10-19 に「trigger_id は据え置き」で踏んだ)。
+    # **欄が無ければ 1 文字も足さない**(今までのページを変えない)。
+    src = str(data.get("source") or "").strip()
+    sess = str(data.get("session") or "").strip()
+    if src or sess:
+        bits = []
+        if src:
+            bits.append(f"版 {esc(src)}")
+        if sess:
+            bits.append(f"書いたセッション {esc(sess)}")
+        parts.append('<p class="src">' + " / ".join(bits) + "</p>")
+
     for key, label in SECTIONS:
         items = _items(data.get(key))
         body = ("<ul>" + "".join(f"<li>{esc(i)}</li>" for i in items) + "</ul>") if items \
@@ -123,7 +139,8 @@ def render(data: dict) -> str:
 
 def parse_markdown(md: str) -> dict:
     """`# 題` / `- 日付:` / `- 定期起動:`(複数可)/ `## <欄の名前>` の下の `- 項目` を読む。"""
-    data: dict = {"title": "", "date": "", "routines": [], **{k: [] for k, _ in SECTIONS}}
+    data: dict = {"title": "", "date": "", "routines": [], "source": "", "session": "",
+                  **{k: [] for k, _ in SECTIONS}}
     label_to_key = {label: key for key, label in SECTIONS}
     cur = None
     for line in md.splitlines():
@@ -143,6 +160,10 @@ def parse_markdown(md: str) -> dict:
                 data["date"] = item.split(":", 1)[1].strip()
             elif item.startswith("定期起動:"):
                 data["routines"].append(item.split(":", 1)[1].strip())
+            elif item.startswith("版:"):
+                data["source"] = item.split(":", 1)[1].strip()
+            elif item.startswith("セッション:"):
+                data["session"] = item.split(":", 1)[1].strip()
         elif item:
             data[cur].append(item)
     return data
