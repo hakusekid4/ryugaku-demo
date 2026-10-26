@@ -41,6 +41,27 @@ DEFAULT_ROOTS = {
 }
 
 
+def resolve_case(path: Path) -> Path:
+    """その場所が無いとき、**大文字小文字だけ違う兄弟**を探して返す(AUT-A288)。
+
+    既定の場所は小文字で書いてあるが、実物は誰がクローンしたかで
+    `/home/user/keibaAI-V3-next` のように大文字が混じる。2026-10-19 に
+    V3 のセッションが司令塔の連絡をそのまま貼ったところ、5 件すべてが
+    「git の作業場ではない」で確かめられず、`--root` を手で足し直していた。
+    **連絡の書き方のまま貼れるのがこの道具の売り**なので、ここで吸収する。
+    """
+    if path.exists():
+        return path
+    parent = path.parent
+    if not parent.is_dir():
+        return path
+    want = path.name.lower()
+    for child in sorted(parent.iterdir()):
+        if child.name.lower() == want and child.is_dir():
+            return child
+    return path
+
+
 def git(repo: Path, *args: str) -> tuple[int, str]:
     out = subprocess.run(["git", "-C", str(repo), *args],
                          capture_output=True, text=True)
@@ -55,7 +76,7 @@ def split_target(target: str, roots: dict[str, Path]) -> tuple[Path, str]:
     key = name.strip().lower()
     if key not in roots:
         raise KeyError(name)
-    return roots[key], path.strip()
+    return resolve_case(roots[key]), path.strip()
 
 
 def check_file(repo: Path, rel: str, ref: str = "origin/main") -> dict:
