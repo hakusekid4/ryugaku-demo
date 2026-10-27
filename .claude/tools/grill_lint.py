@@ -31,7 +31,8 @@ Q_HEAD = re.compile(r"^### (Q\d+[a-z]?)\s+(.*)$", re.M)
 PATH_IN_TICK = re.compile(r"`([^`\s]*[/.][^`\s]*)`")
 #: 未回答の印
 # 答え待ちの書き方。2026-10-16 に「(答え待ち)」と書いて「答えあり」と誤読された(AUT-A278)
-UNANSWERED = ("(未)", "答え待ち", "未回答")
+# 2026-10-27 に「(待ち)」でも踏んだ(AUT-A295)
+UNANSWERED = ("(未)", "答え待ち", "未回答", "(待ち)", "(待ち)")
 
 
 def front_matter(text: str, key: str) -> str:
