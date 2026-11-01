@@ -21,7 +21,7 @@ description: docs/plans/<スラッグ>/tickets/ のチケットを 1 枚取り�
 ## 手順
 
 1. **1 枚選ぶ**: 引数がチケットのファイルならそれ。フォルダなら `python .claude/tools/tickets.py frontier docs/plans/<スラッグ>` で**前線**(状態が `ready-for-agent` で、依存がすべて `done`)を出し、最初の 1 枚を取る(ai-config では `scripts/tickets.py`)。前線が空なら、何が何待ちかを 1〜3 行で報告して終わる
-2. **着手を記す**: `python .claude/tools/tickets.py start <チケット>`(ai-config では `scripts/tickets.py`)。状態が `in-progress` になり、「記録」に着手の日時(日本時間)が入る(他のセッションと取り合わないため。2 時間の上限もここから数える)。複数セッションが動くリポジトリなら、ここで 1 回コミットして push する
+2. **着手を記す**: `python .claude/tools/tickets.py start <チケット>`(ai-config では `scripts/tickets.py`)。状態が `in-progress` になり、「記録」に着手の日時(日本時間)が入る(他のセッションと取り合わないため。2 時間の上限もここから数える)。複数セッションが動くリポジトリなら、ここで 1 回コミットして push する。**着手の前に `git pull` して状態を読み、`in-progress` なら取らない。書く先に同じ名前のファイルがあれば `cat >` で潰さない**(2026-10-27、別セッションが着手済みの事前登録と道具を上書きした)
 3. **読む**: チケット・元の仕様書・`GLOSSARY.md`・関係する `docs/adr/`
 4. **作る**: `/tdd` の決まりで、仕様書の継ぎ目に沿って RED → GREEN を回す。テストは 1 ファイルずつ頻繁に走らせる
 5. **完了条件を全部走らせる**: チケットの「完了条件」のコマンドを書いてあるとおりに実行し、出力の要点(終了コード・数字)を「記録」に貼る。最後にテスト全体を 1 回走らせる
