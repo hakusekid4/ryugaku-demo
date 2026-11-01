@@ -92,7 +92,8 @@ def push(
     remote: str = "origin", branch: str = "", *, test: str = "",
     cwd: str | None = None, sleep=time.sleep,
 ) -> int:
-    branch = branch or current_branch(cwd)
+    here = current_branch(cwd)
+    branch = branch or here
     if not branch or branch == "HEAD":
         print("いまのブランチが分からない(detached HEAD)。--branch で渡す", file=sys.stderr)
         return 2
@@ -127,7 +128,12 @@ def push(
     for i, wait in enumerate((0, *BACKOFF)):
         if wait:
             sleep(wait)
-        code, out = git("push", "-u", remote, branch, cwd=cwd)
+        # 作業ブランチから別の枝(main など)へ押すときは、手元のその枝ではなく
+        # いまの HEAD を押す(手元の古い枝を押して跳ねられる、2026-10-30 に 3 回)
+        if here and here != branch:
+            code, out = git("push", remote, f"HEAD:{branch}", cwd=cwd)
+        else:
+            code, out = git("push", "-u", remote, branch, cwd=cwd)
         if code == 0:
             print(f"押した: {remote}/{branch}")
             return 0
