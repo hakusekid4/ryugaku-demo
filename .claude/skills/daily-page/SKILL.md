@@ -32,6 +32,7 @@ description: そのセッションの「毎日のページ」(HTML)を作り、�
    (ai-config では `scripts/daily_page.py`。入力の形は `--example` / `--example-md` で見られる。題が空なら道具が止まる)
 4. **同じリンクで出す**: `Artifact` で publish する。決まりの形(題・色の変数・暗い表示・スマホ幅)は道具の出力が満たしている。ほかに Artifact の道具が求める手順があれば従う
    - このセッションのリンクは、このリポジトリの `.claude/daily-pages.json`(`{"<session_id>": "<リンク>"}`)に控える
+   - **控えを見る前に `git fetch origin main` してから `origin/main` の内容を見る。**手元の clone が古いと、前任が直前に引き継いだ控え(前任のセッション ID → 自分のセッション ID への付け替え)を見落として新規作成してしまう(2026-11-08、keiba-rl-sim の 7 代目で発生)
    - 控えがあれば、その `url` を渡して書き換える(前の会話で作ったものは、先に `action: "read"` で読んでから)。同じ会話の中で 2 回目なら、同じ `file_path` で出せば同じリンクになる
    - 控えが無ければ新しく出し、出たリンクを控えに書いてコミットする
 5. **初回だけ ai-config へ知らせる**: 新しくリンクができたら、`/ai-config-memo` で 1 件送る(ai-config 自身では `python scripts/session_pages.py register --url <リンク> --title "<題>" --session <session_id>`)。見取り図の一覧に載る
