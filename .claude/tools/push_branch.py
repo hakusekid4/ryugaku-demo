@@ -43,6 +43,11 @@ NETWORK_HINTS = (
 #: 「先に取り込め」と言われた形。retry ではなく rebase で直す
 BEHIND_HINTS = ("fetch first", "non-fast-forward", "rejected")
 
+#: 遠くにそのブランチがまだ無い形。**誤りではない**(新しい作業ブランチの 1 回目)。
+#: 取り込むものが無いだけなので、そのまま push へ進む(AUT-A305、2026-11-09)
+NO_REMOTE_HINTS = ("couldn't find remote ref", "could not find remote ref",
+                   "no such ref was fetched")
+
 #: 通信の失敗で待つ秒数
 BACKOFF = (2, 4, 8, 16)
 
@@ -100,6 +105,10 @@ def push(
 
     code, out = git("fetch", remote, branch, cwd=cwd)
     if code != 0:
+        if _has(out, NO_REMOTE_HINTS):
+            # 新しいブランチの 1 回目。遠くに無いので取り込むものは無い
+            print(f"{remote}/{branch} はまだ無い。新しいブランチとして押す")
+            return _push_loop(remote, branch, here, cwd=cwd, sleep=sleep)
         print(f"fetch できなかった: {out.strip()}", file=sys.stderr)
         if not _has(out, NETWORK_HINTS):
             return 2
@@ -125,6 +134,13 @@ def push(
         print(f"押すものが無い({remote}/{branch} と同じ)")
         return 0
 
+    return _push_loop(remote, branch, here, cwd=cwd, sleep=sleep)
+
+
+def _push_loop(
+    remote: str, branch: str, here: str, *, cwd: str | None = None, sleep=time.sleep,
+) -> int:
+    """push だけを、通信の失敗のときだけ retry しながら繰り返す。"""
     for i, wait in enumerate((0, *BACKOFF)):
         if wait:
             sleep(wait)
