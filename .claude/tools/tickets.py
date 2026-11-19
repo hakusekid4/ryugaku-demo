@@ -243,6 +243,15 @@ def close(path: Path, when: str, note: str, *, tick: bool = True) -> None:
     _append_record(path, f"- 閉じた: {when}。{note}")
 
 
+def stop(path: Path, when: str, note: str) -> None:
+    """止める。状態を ready-for-human にし、`- 止めた:` を足す(/run-ticket の「止まってよいとき」)。
+
+    手で状態の行と記録を書き換えていた(2026-11-18 の自動化探索。keirin-ai の 04)。
+    """
+    set_state(path, "ready-for-human")
+    _append_record(path, f"- 止めた: {when}。{note}")
+
+
 def update_readme(plan: Path) -> int:
     """`tickets/README.md` の表の状態を、チケットの実際の状態に合わせる。
 
@@ -278,16 +287,26 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument(
         "cmd",
-        choices=["frontier", "lint", "goal", "fill-goals", "start", "close", "readme"],
+        choices=["frontier", "lint", "goal", "fill-goals", "start", "close", "stop", "readme"],
     )
     ap.add_argument("path")
     ap.add_argument("--when", default="", help="start / close のとき、日本時間")
-    ap.add_argument("--note", default="", help="close のとき、結果の 1 行")
+    ap.add_argument("--note", default="", help="close のとき結果の 1 行、stop のとき理由と次の案の 1 行")
     ap.add_argument(
         "--no-tick", action="store_true",
         help="close のとき、完了条件の印を付けない(本人確認が残っているときなど)",
     )
     a = ap.parse_args(argv)
+    if a.cmd == "stop":
+        if not a.note:
+            print("--note に理由と次の案の 1 行を渡す", file=sys.stderr)
+            return 2
+        p = Path(a.path)
+        when = a.when or _now()
+        stop(p, when, a.note)
+        print(f"止めた: {p}({when})")
+        print(f"一覧の表を直した: {update_readme(p.parent)} 行")
+        return 0
     if a.cmd in {"start", "close"}:
         when = a.when or _now()
         p = Path(a.path)
