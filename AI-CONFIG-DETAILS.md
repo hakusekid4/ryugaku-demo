@@ -2,7 +2,7 @@
 
 *`AI-CONFIG.md` から分けた詳細。ai-config から自動同期される。**手で編集しない**。*
 
-- 生成元コミット: `f240b96` / 生成日: 2026-10-12
+- 生成元コミット: `63de73a0` / 生成日: 2026-11-24
 - 変種: public
 
 **このファイルは自動では読み込まれない。**必要になったときに開く。禁止事項と優先順位は `AI-CONFIG.md` のほうにあり、そちらが常に優先する。
@@ -265,9 +265,17 @@ ai-config の `projects/<スラッグ>/` に 2 つ。ひな形は `projects/_tem
   機械が読む文字列は `jst.stamp()`、人が読む文字列は `jst.fmt()`、
   読むときは `jst.parse()`、並べ替えは `jst.sort_key()`)。
   他のリポジトリに同じ部品が無ければ、`ZoneInfo("Asia/Tokyo")` か `timezone(timedelta(hours=9))` を明示する
-- **GitHub Actions の `cron` だけは UTC で書くしかない**(GitHub の仕様)。
+- **`cron` だけは UTC で書くしかない**(GitHub Actions も Claude Code の Routine も同じ)。
   日本時間から 9 時間引いた値を書き、**同じ行か直前に日本時間を注記する**
-  (例: `- cron: "0 12 * * 0"   # 日曜 21:00 JST`)
+  (例: `- cron: "0 12 * * 0"   # 日曜 21:00 JST`)。
+  Routine は注記を書く場所が無いので、**名前の末尾に日本時間を書く**
+  (例: `ai-config 週次まとめ(毎週日曜 21:00 JST、…)`)
+- **9 時間の引き算を暗算しない。**日付をまたぐと曜日・日も 1 つずらす必要がある
+  (日本時間の日曜 8:00 は UTC では **土曜** 23:00 = `0 23 * * 6`)。
+  ずれても「毎週動いてはいる」ので気づけない。`python scripts/cron_jst.py --jst 日 8:00` で出し、
+  `python scripts/cron_jst.py "0 23 * * 6"` で読み直す(試験 `scripts/tests/test_cron_jst.py`)。
+  定期実行の時刻を台帳にする場合は `ai-systems/routine-schedule.md` の形式に合わせ、
+  cron と日本時間の食い違いを `cron_jst.py` の監視対象に入れる
 - **過去の記録は書き換えない。**`errors/log.jsonl` のような追記専用の記録に残っている UTC の行は
   そのまま残し、読むときに日本時間へ直す(`jst.parse()` / `jst.sort_key()` がやる)
 
